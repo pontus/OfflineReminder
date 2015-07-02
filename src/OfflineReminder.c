@@ -1,19 +1,34 @@
 #include <pebble.h>
 
+
 static Window *window;
 static TextLayer *text_layer;
 static BitmapLayer *bitmap_layer;
+
+static int clockmode = 0;
 
 static char message[20];
 static char timebuf[10];
 static void updater();
 static unsigned int going_since;
 static void draw_clock(struct Layer *layer, GContext *ctx);
-  
-static const unsigned int time_to_go[] = { 7*60+25, 10*60, 12*60+20, 15*60, 17*60, 19*60+30, 22*60+24, 23*60+35 };
+static GBitmap *watchface;
+
+static unsigned int inverted = false;
+static const unsigned int time_to_go[] = { 7*60+25,
+					   10*60,
+					   12*60+20,
+					   15*60,
+					   17*60,
+					   19*60+30,
+					   22*60+24,
+					   23*60+35
+                                         };
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
-  text_layer_set_text(text_layer, "Hej!");
+  inverted = !inverted;
+
+  updater();
 }
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -25,7 +40,8 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  text_layer_set_text(text_layer, "Du!");
+  clockmode = (clockmode +1) % 3;
+  updater();
 }
 
 static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -44,8 +60,9 @@ static void window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
   
   text_layer = text_layer_create((GRect) { .origin = { 0, bounds.size.h/2-25 }, .size = { bounds.size.w, 50 } });
-  bitmap_layer = bitmap_layer_create((GRect) { .origin = {0,0}, .size = {bounds.size.w, bounds.size.h}});
-  
+  bitmap_layer = bitmap_layer_create((GRect) { .origin = {0,0},
+	                                   .size = {bounds.size.w, bounds.size.h}});
+ 
   // Improve the layout to be more like a watchface
   text_layer_set_font(text_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
   text_layer_set_text_alignment(text_layer, GTextAlignmentCenter);
@@ -59,6 +76,8 @@ static void window_load(Window *window) {
 
 static void window_unload(Window *window) {
   text_layer_destroy(text_layer);
+
+  bitmap_layer_destroy(bitmap_layer);
 }
 
 static void go_now(unsigned int now) {
@@ -71,14 +90,57 @@ static void go_now(unsigned int now) {
   text_layer_set_text(text_layer,"Dags!");
 }
 
+static void draw_digital(struct Layer *layer, GContext *ctx) {
 
-static void draw_clock (struct Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
+
+  time_t temp = time(NULL); 
+  struct tm *t = localtime(&temp);
+
+  strftime(message, sizeof(message)-1, "%H:%M", t);
+        
+  graphics_draw_text(ctx, message,
+		     fonts_get_system_font( FONT_KEY_BITHAM_42_BOLD  ),
+		     (GRect) { .origin = {0,bounds.size.h/2-22},
+			 .size = {bounds.size.w,42} },
+		     GTextOverflowModeFill,
+		     GTextAlignmentCenter, NULL);
+
+   
+}
+
+static void draw_analog_nice(struct Layer *layer, GContext *ctx) {
+
   GRect bounds = layer_get_bounds(layer);
   GPoint middle =  { bounds.size.w/2,
 		     bounds.size.h/2};
   int clocksize = bounds.size.w/2-8;
 
-  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_draw_bitmap_in_rect(ctx, watchface, bounds);
+
+  time_t temp = time(NULL); 
+  struct tm *t = localtime(&temp);
+
+  int32_t hour_angle = TRIG_MAX_ANGLE*(t->tm_hour % 12)/12;
+  GPoint hour = { bounds.size.w/2 + (sin_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO) ,
+		  bounds.size.h/2 - (cos_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO)};
+  
+  graphics_draw_line(ctx, middle, hour);
+
+  int32_t minute_angle = TRIG_MAX_ANGLE*t->tm_min/60;
+  GPoint minute = { bounds.size.w/2 + (sin_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO) ,
+		  bounds.size.h/2 - (cos_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO)};
+  
+  graphics_draw_line(ctx, middle, minute);
+
+}
+  
+static void draw_analog_simple(struct Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
+  GPoint middle =  { bounds.size.w/2,
+		     bounds.size.h/2};
+  int clocksize = bounds.size.w/2-8;
+    
   graphics_draw_circle(ctx, middle, clocksize);
 
   graphics_draw_text(ctx, "12",  fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
@@ -122,6 +184,26 @@ static void draw_clock (struct Layer *layer, GContext *ctx) {
 			   bounds.size.h/2 - (cos_lookup(mark_angle) * clocksize * 15 / 16 / TRIG_MAX_RATIO)};
 
     graphics_draw_line(ctx, mark_inner, mark_outer);
+ 
+
+  }
+}
+
+static void draw_clock (struct Layer *layer, GContext *ctx) {
+
+  
+  graphics_context_set_text_color(ctx, GColorBlack);
+
+  switch  (clockmode) {
+  case 0: 
+    draw_analog_simple(layer, ctx);
+    break;
+  case 1:
+    draw_analog_nice(layer, ctx);
+    break;
+  case 2:
+    draw_digital(layer, ctx);
+    break;
   }
 }
 
@@ -132,6 +214,8 @@ static void updater() {
 
   unsigned int time_now = tick_time->tm_hour*60+tick_time->tm_min;
 
+  layer_mark_dirty((Layer*) bitmap_layer);
+  
   if (going_since && (((time_now - going_since) % 3) == 0))  {
     go_now(going_since);
     return;
@@ -164,6 +248,8 @@ static void init(void) {
 
   // Register with TickTimerService
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+
+  watchface = gbitmap_create_with_resource(RESOURCE_ID_WATCHFACE);
   
   const bool animated = true;
   window_stack_push(window, animated);
@@ -171,6 +257,7 @@ static void init(void) {
 
 static void deinit(void) {
   window_destroy(window);
+  gbitmap_destroy(watchface);
 }
 
 int main(void) {
