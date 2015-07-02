@@ -130,9 +130,14 @@ static void draw_analog_hands(struct Layer *layer, GContext *ctx, GRect* bounds)
   time_t temp = time(NULL); 
   struct tm *t = localtime(&temp);
 
-  int32_t hour_angle = TRIG_MAX_ANGLE*(t->tm_hour % 12)/12;
-  GPoint hour = { bounds->size.w/2 + (sin_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO) ,
-		  bounds->size.h/2 - (cos_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO)};
+  int32_t hour_angle = TRIG_MAX_ANGLE*( ( (t->tm_hour % 12)*60+
+					  t->tm_min))/(12*60);
+  GPoint hour = { bounds->size.w/2 +
+		  (sin_lookup(hour_angle) * clocksize*7/16
+		   / TRIG_MAX_RATIO) ,
+		  bounds->size.h/2 -
+		  (cos_lookup(hour_angle) * clocksize*7/16
+		   / TRIG_MAX_RATIO)};
   
   graphics_draw_line(ctx, middle, hour);
 
