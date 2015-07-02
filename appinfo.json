@@ -15,10 +15,15 @@
   "resources": {
       "media": [
 	  {
-      "type": "png",
-      "name": "WATCHFACE",
-      "file": "bwwatchface.png"
-    }
+	      "type": "png",
+	      "name": "WATCHFACE",
+	      "file": "bwwatchface.png"
+	  },
+	  {
+	      "type": "png",
+	      "name": "WATCHFACE-INVERTED",
+	      "file": "bwwatchface-inv.png"
+	  }
        ]
   }
 }

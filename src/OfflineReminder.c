@@ -8,7 +8,7 @@ static BitmapLayer *bitmap_layer;
 static int clockmode = 0;
 
 static char message[20];
-static char timebuf[10];
+
 static void updater();
 static unsigned int going_since;
 static void draw_clock(struct Layer *layer, GContext *ctx);
@@ -27,7 +27,13 @@ static const unsigned int time_to_go[] = { 7*60+25,
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   inverted = !inverted;
+  
+  gbitmap_destroy(watchface);
 
+  watchface = gbitmap_create_with_resource(inverted ?  RESOURCE_ID_WATCHFACEINVERTED :
+					    RESOURCE_ID_WATCHFACE
+					   );
+      
   updater();
 }
 
@@ -82,17 +88,22 @@ static void window_unload(Window *window) {
 
 static void go_now(unsigned int now) {
 
+
   layer_set_hidden((Layer*) bitmap_layer, true);
   layer_set_hidden((Layer*) text_layer, false);
-  
+
   going_since = now;
   vibes_double_pulse();
   text_layer_set_text(text_layer,"Dags!");
 }
 
-static void draw_digital(struct Layer *layer, GContext *ctx) {
 
-  GRect bounds = layer_get_bounds(layer);
+
+
+
+
+
+static void draw_digital(struct Layer *layer, GContext *ctx, GRect *bounds) {
 
   time_t temp = time(NULL); 
   struct tm *t = localtime(&temp);
@@ -101,108 +112,109 @@ static void draw_digital(struct Layer *layer, GContext *ctx) {
         
   graphics_draw_text(ctx, message,
 		     fonts_get_system_font( FONT_KEY_BITHAM_42_BOLD  ),
-		     (GRect) { .origin = {0,bounds.size.h/2-22},
-			 .size = {bounds.size.w,42} },
+		     (GRect) { .origin = {0,bounds->size.h/2-22},
+			 .size = {bounds->size.w,42} },
 		     GTextOverflowModeFill,
 		     GTextAlignmentCenter, NULL);
 
    
 }
 
-static void draw_analog_nice(struct Layer *layer, GContext *ctx) {
 
-  GRect bounds = layer_get_bounds(layer);
-  GPoint middle =  { bounds.size.w/2,
-		     bounds.size.h/2};
-  int clocksize = bounds.size.w/2-8;
+static void draw_analog_hands(struct Layer *layer, GContext *ctx, GRect* bounds) {
 
-  graphics_draw_bitmap_in_rect(ctx, watchface, bounds);
-
+  GPoint middle =  { bounds->size.w/2,
+		     bounds->size.h/2};
+  int clocksize = bounds->size.w/2-8;
+  
   time_t temp = time(NULL); 
   struct tm *t = localtime(&temp);
 
   int32_t hour_angle = TRIG_MAX_ANGLE*(t->tm_hour % 12)/12;
-  GPoint hour = { bounds.size.w/2 + (sin_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO) ,
-		  bounds.size.h/2 - (cos_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO)};
+  GPoint hour = { bounds->size.w/2 + (sin_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO) ,
+		  bounds->size.h/2 - (cos_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO)};
   
   graphics_draw_line(ctx, middle, hour);
 
   int32_t minute_angle = TRIG_MAX_ANGLE*t->tm_min/60;
-  GPoint minute = { bounds.size.w/2 + (sin_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO) ,
-		  bounds.size.h/2 - (cos_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO)};
+  GPoint minute = { bounds->size.w/2 + (sin_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO) ,
+		  bounds->size.h/2 - (cos_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO)};
   
   graphics_draw_line(ctx, middle, minute);
 
 }
+
+static void draw_analog_nice(struct Layer *layer, GContext *ctx, GRect* bounds) {
+
+  graphics_draw_bitmap_in_rect(ctx, watchface, *bounds);
+  draw_analog_hands(layer, ctx, bounds);
+}
   
-static void draw_analog_simple(struct Layer *layer, GContext *ctx) {
-  GRect bounds = layer_get_bounds(layer);
-  GPoint middle =  { bounds.size.w/2,
-		     bounds.size.h/2};
-  int clocksize = bounds.size.w/2-8;
+static void draw_analog_simple(struct Layer *layer, GContext *ctx, GRect* bounds) {
+
+  int clocksize = bounds->size.w/2-8;
     
+  GPoint middle =  { bounds->size.w/2,
+		     bounds->size.h/2};
+  
   graphics_draw_circle(ctx, middle, clocksize);
 
   graphics_draw_text(ctx, "12",  fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
-		     (GRect) { .origin = {bounds.size.w/2-14, 0},
+		     (GRect) { .origin = {bounds->size.w/2-14, 0},
 			 .size = {28,14} }, GTextOverflowModeFill,GTextAlignmentCenter, NULL);
 
   graphics_draw_text(ctx, "3",  fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
-		     (GRect) { .origin = {bounds.size.w-15, bounds.size.h/2-7},
+		     (GRect) { .origin = {bounds->size.w-15, bounds->size.h/2-7},
 			 .size = {14,14} }, GTextOverflowModeFill,GTextAlignmentRight, NULL);
 
   graphics_draw_text(ctx, "9",  fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
-		     (GRect) { .origin = {1, bounds.size.h/2-7},
+		     (GRect) { .origin = {1, bounds->size.h/2-7},
 			 .size = {14,14} }, GTextOverflowModeFill,GTextAlignmentLeft, NULL);
 
   graphics_draw_text(ctx, "6",  fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
-		     (GRect) { .origin = {bounds.size.w/2-7, bounds.size.h-14},
+		     (GRect) { .origin = {bounds->size.w/2-7, bounds->size.h-14},
 			 .size = {14,14} }, GTextOverflowModeFill,GTextAlignmentCenter, NULL);
+
+  draw_analog_hands(layer, ctx, bounds);
   
-  time_t temp = time(NULL); 
-  struct tm *t = localtime(&temp);
-
-  int32_t hour_angle = TRIG_MAX_ANGLE*(t->tm_hour % 12)/12;
-  GPoint hour = { bounds.size.w/2 + (sin_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO) ,
-		  bounds.size.h/2 - (cos_lookup(hour_angle) * clocksize*7/16 / TRIG_MAX_RATIO)};
-  
-  graphics_draw_line(ctx, middle, hour);
-
-  int32_t minute_angle = TRIG_MAX_ANGLE*t->tm_min/60;
-  GPoint minute = { bounds.size.w/2 + (sin_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO) ,
-		  bounds.size.h/2 - (cos_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO)};
-  
-  graphics_draw_line(ctx, middle, minute);
-
-
   for (int i=0; i<12; i++) {
     int32_t mark_angle = TRIG_MAX_ANGLE*i/12;
-    GPoint mark_outer =  { bounds.size.w/2 + (sin_lookup(mark_angle) * clocksize / TRIG_MAX_RATIO) ,
-			   bounds.size.h/2 - (cos_lookup(mark_angle) * clocksize / TRIG_MAX_RATIO)};
+    GPoint mark_outer =  { bounds->size.w/2 + (sin_lookup(mark_angle) * clocksize / TRIG_MAX_RATIO) ,
+			   bounds->size.h/2 - (cos_lookup(mark_angle) * clocksize / TRIG_MAX_RATIO)};
 
-    GPoint mark_inner =  { bounds.size.w/2 + (sin_lookup(mark_angle) * clocksize * 15 / 16 / TRIG_MAX_RATIO) ,
-			   bounds.size.h/2 - (cos_lookup(mark_angle) * clocksize * 15 / 16 / TRIG_MAX_RATIO)};
+    GPoint mark_inner =  { bounds->size.w/2 + (sin_lookup(mark_angle) * clocksize * 15 / 16 / TRIG_MAX_RATIO) ,
+			   bounds->size.h/2 - (cos_lookup(mark_angle) * clocksize * 15 / 16 / TRIG_MAX_RATIO)};
 
     graphics_draw_line(ctx, mark_inner, mark_outer);
- 
-
-  }
+   }
 }
 
 static void draw_clock (struct Layer *layer, GContext *ctx) {
 
+  GRect bounds = layer_get_bounds(layer);
   
-  graphics_context_set_text_color(ctx, GColorBlack);
+  if (!inverted) {
+    graphics_context_set_text_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, GColorWhite);
+    graphics_context_set_stroke_color(ctx, GColorBlack);
+  } else {
+    graphics_context_set_text_color(ctx, GColorWhite);
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_stroke_color(ctx, GColorWhite);
+  }
 
+ graphics_fill_rect(ctx, bounds, 0, 0);
+  
   switch  (clockmode) {
+    
   case 0: 
-    draw_analog_simple(layer, ctx);
+    draw_analog_simple(layer, ctx, &bounds);
     break;
   case 1:
-    draw_analog_nice(layer, ctx);
+    draw_analog_nice(layer, ctx, &bounds);
     break;
   case 2:
-    draw_digital(layer, ctx);
+    draw_digital(layer, ctx, &bounds);
     break;
   }
 }
