@@ -21,7 +21,7 @@
 	  },
 	  {
 	      "type": "png",
-	      "name": "WATCHFACE-INVERTED",
+	      "name": "WATCHFACEINVERTED",
 	      "file": "bwwatchface-inv.png"
 	  }
        ]
