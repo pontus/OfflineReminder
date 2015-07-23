@@ -15,15 +15,15 @@ static void draw_clock(struct Layer *layer, GContext *ctx);
 static GBitmap *watchface;
 
 static unsigned int inverted = false;
-static const unsigned int time_to_go[] = { 7*60+25,
-					   10*60,
-					   12*60+20,
-					   15*60,
-					   17*60,
-					   19*60+30,
-					   22*60+24,
-					   23*60+35
+static const unsigned int time_to_go[] = { 9*60+30,
+					   11*60+45,
+					   14*60,
+					   16*60+20,
+					   18*60+30
                                          };
+
+
+		
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   inverted = !inverted;
@@ -121,10 +121,10 @@ static void draw_digital(struct Layer *layer, GContext *ctx, GRect *bounds) {
 }
 
 
-static void draw_analog_hands(struct Layer *layer, GContext *ctx, GRect* bounds) {
+static void draw_analog_hands(struct Layer *layer, GContext *ctx, GRect* bounds, int xtrans, int ytrans) {
 
-  GPoint middle =  { bounds->size.w/2,
-		     bounds->size.h/2};
+  GPoint middle =  { bounds->size.w/2 + xtrans,
+		     bounds->size.h/2 + ytrans};
   int clocksize = bounds->size.w/2-8;
   
   time_t temp = time(NULL); 
@@ -134,16 +134,16 @@ static void draw_analog_hands(struct Layer *layer, GContext *ctx, GRect* bounds)
 					  t->tm_min))/(12*60);
   GPoint hour = { bounds->size.w/2 +
 		  (sin_lookup(hour_angle) * clocksize*7/16
-		   / TRIG_MAX_RATIO) ,
+		   / TRIG_MAX_RATIO) + xtrans,
 		  bounds->size.h/2 -
 		  (cos_lookup(hour_angle) * clocksize*7/16
-		   / TRIG_MAX_RATIO)};
+		   / TRIG_MAX_RATIO) + ytrans};
   
   graphics_draw_line(ctx, middle, hour);
 
   int32_t minute_angle = TRIG_MAX_ANGLE*t->tm_min/60;
-  GPoint minute = { bounds->size.w/2 + (sin_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO) ,
-		  bounds->size.h/2 - (cos_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO)};
+  GPoint minute = { bounds->size.w/2 + (sin_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO) + xtrans,
+		  bounds->size.h/2 - (cos_lookup(minute_angle) * clocksize*12/16 / TRIG_MAX_RATIO) + ytrans};
   
   graphics_draw_line(ctx, middle, minute);
 
@@ -152,7 +152,7 @@ static void draw_analog_hands(struct Layer *layer, GContext *ctx, GRect* bounds)
 static void draw_analog_nice(struct Layer *layer, GContext *ctx, GRect* bounds) {
 
   graphics_draw_bitmap_in_rect(ctx, watchface, *bounds);
-  draw_analog_hands(layer, ctx, bounds);
+  draw_analog_hands(layer, ctx, bounds, 0, 3);
 }
   
 static void draw_analog_simple(struct Layer *layer, GContext *ctx, GRect* bounds) {
@@ -180,7 +180,7 @@ static void draw_analog_simple(struct Layer *layer, GContext *ctx, GRect* bounds
 		     (GRect) { .origin = {bounds->size.w/2-7, bounds->size.h-14},
 			 .size = {14,14} }, GTextOverflowModeFill,GTextAlignmentCenter, NULL);
 
-  draw_analog_hands(layer, ctx, bounds);
+  draw_analog_hands(layer, ctx, bounds, 0, 0);
   
   for (int i=0; i<12; i++) {
     int32_t mark_angle = TRIG_MAX_ANGLE*i/12;
