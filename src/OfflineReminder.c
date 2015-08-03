@@ -65,7 +65,8 @@ static void window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
   
-  text_layer = text_layer_create((GRect) { .origin = { 0, bounds.size.h/2-25 }, .size = { bounds.size.w, 50 } });
+  text_layer = text_layer_create((GRect) { .origin = { 0, bounds.size.h/2-25 },
+	                                   .size = { bounds.size.w, 50 } });
   bitmap_layer = bitmap_layer_create((GRect) { .origin = {0,0},
 	                                   .size = {bounds.size.w, bounds.size.h}});
  
