@@ -16,10 +16,10 @@ static GBitmap *watchface;
 
 static unsigned int inverted = false;
 static const unsigned int time_to_go[] = { 9*60+30,
-					   11*60+45,
-					   14*60,
-					   16*60+20,
-					   18*60+30
+					   12*60+8,
+					   14*60+00,
+					   17*60+00,
+					   19*60+30,
                                          };
 
 
