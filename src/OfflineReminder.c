@@ -8,20 +8,48 @@ static BitmapLayer *bitmap_layer;
 static int clockmode = 0;
 
 static char message[20];
+static char going_string[46];
 
 static void updater();
-static unsigned int going_since;
+
+static int going_since = -1;
+static const char* current_msg = NULL;
+
 static void draw_clock(struct Layer *layer, GContext *ctx);
 static GBitmap *watchface;
 
 static unsigned int inverted = false;
+static const char fmsg[] = "Dags!";
+static const char smsg[] = "Gå in!";
+
+
 static const unsigned int time_to_go[] = { 9*60+30,
 					   12*60+8,
 					   14*60+00,
+					   15*60+00,
 					   17*60+00,
+					   18*60+02,
 					   19*60+30,
                                          };
 
+static unsigned char wdays[] = {
+  255,
+  255,
+  255,
+  255,
+  255,
+  255,
+  255,
+};
+
+static const char* msgs[] = { fmsg,
+		       fmsg,
+		       fmsg,
+		       smsg,
+		       fmsg,
+		       smsg,
+		       fmsg,
+};
 
 		
 
@@ -39,8 +67,9 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   vibes_cancel();
-  going_since = 0;
-
+  going_since = -1;
+  current_msg = NULL;
+  
   layer_set_hidden((Layer*) bitmap_layer, false);
   layer_set_hidden((Layer*) text_layer, true);  
 }
@@ -68,7 +97,7 @@ static void window_load(Window *window) {
   text_layer = text_layer_create((GRect) { .origin = { 0, bounds.size.h/2-25 },
 	                                   .size = { bounds.size.w, 50 } });
   bitmap_layer = bitmap_layer_create((GRect) { .origin = {0,0},
-	                                   .size = {bounds.size.w, bounds.size.h}});
+                                   .size = {bounds.size.w, bounds.size.h}});
  
   // Improve the layout to be more like a watchface
   text_layer_set_font(text_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
@@ -89,16 +118,32 @@ static void window_unload(Window *window) {
 
 static void go_now(unsigned int now) {
 
-
   layer_set_hidden((Layer*) bitmap_layer, true);
   layer_set_hidden((Layer*) text_layer, false);
 
   going_since = now;
   vibes_double_pulse();
-  text_layer_set_text(text_layer,"Dags!");
+  text_layer_set_text(text_layer,current_msg);
 }
 
+static void draw_go_overlay(struct Layer *layer, GContext *ctx, GRect *bounds) {
 
+  if ( -1 == going_since || !current_msg)
+    return;
+
+  snprintf(going_string,  sizeof(going_string), "%d:%02d   %s",
+	   going_since/60,
+	   going_since % 60,
+	   current_msg);
+  
+  graphics_draw_text(ctx, going_string,
+		     fonts_get_system_font( FONT_KEY_GOTHIC_18_BOLD  ),
+		     (GRect) { .origin = {0,bounds->size.h-19},
+			 .size = {bounds->size.w,18} },
+		     GTextOverflowModeFill,
+		     GTextAlignmentCenter, NULL);
+  
+}
 
 
 
@@ -223,6 +268,9 @@ static void draw_clock (struct Layer *layer, GContext *ctx) {
     draw_digital(layer, ctx, &bounds);
     break;
   }
+
+  draw_go_overlay(layer, ctx, &bounds);
+
 }
 
 static void updater() {
@@ -234,13 +282,14 @@ static void updater() {
 
   layer_mark_dirty((Layer*) bitmap_layer);
   
-  if (going_since && (((time_now - going_since) % 3) == 0))  {
+  if ((going_since != -1) && (((time_now - going_since) % 3) == 0))  {
     go_now(going_since);
     return;
   }
   
   for (unsigned int i=0; i < sizeof(time_to_go); i++) {
     if (time_now == time_to_go[i]) {
+      current_msg = msgs[i];
       go_now(time_now);
       return;
     }
