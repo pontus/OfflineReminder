@@ -21,37 +21,25 @@ static GBitmap *watchface;
 static unsigned int inverted = false;
 static const char fmsg[] = "Dags!";
 static const char smsg[] = "Gå in!";
+static const char tmsg[] = "Test!";
 
-
-static const unsigned int time_to_go[] = { 9*60+30,
-					   12*60+8,
-					   14*60+00,
-					   15*60+00,
-					   17*60+00,
-					   18*60+02,
-					   19*60+30,
-                                         };
-
-static unsigned char wdays[] = {
-  255,
-  255,
-  255,
-  255,
-  255,
-  255,
-  255,
+struct reminder {
+ const unsigned int time;
+ const unsigned char wdays;
+ const char* msg;
 };
 
-static const char* msgs[] = { fmsg,
-		       fmsg,
-		       fmsg,
-		       smsg,
-		       fmsg,
-		       smsg,
-		       fmsg,
+static struct reminder reminders[] = {
+  {9*60+30, 255, fmsg},
+  {12*60+8, 255, fmsg},
+  {14*60+30, 255, fmsg},
+  {15*60, 190, smsg},
+  {17*60, 255, fmsg},
+  {18*60, 255, tmsg},
+  {19*60+30, 255, fmsg},
 };
 
-		
+	
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   inverted = !inverted;
@@ -278,6 +266,7 @@ static void updater() {
   time_t temp = time(NULL); 
   struct tm *tick_time = localtime(&temp);
 
+  unsigned char wday = 1 << tick_time->tm_wday;
   unsigned int time_now = tick_time->tm_hour*60+tick_time->tm_min;
 
   layer_mark_dirty((Layer*) bitmap_layer);
@@ -287,9 +276,10 @@ static void updater() {
     return;
   }
   
-  for (unsigned int i=0; i < sizeof(time_to_go); i++) {
-    if (time_now == time_to_go[i]) {
-      current_msg = msgs[i];
+  for (unsigned int i=0; i < sizeof(reminders); i++) {
+    if (time_now == reminders[i].time &&
+	wday & reminders[i].wdays) {
+      current_msg = reminders[i].msg;
       go_now(time_now);
       return;
     }
