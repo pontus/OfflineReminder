@@ -89,9 +89,7 @@ static void window_load(Window *window) {
                                    .size = {bounds.size.w, bounds.size.h}});
  
   // Improve the layout to be more like a watchface
-  text_layer_set_font(text_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
-  text_layer_set_text_alignment(text_layer, GTextAlignmentCenter);
-
+ 
   layer_add_child(window_layer, text_layer_get_layer(text_layer));
   layer_add_child(window_layer, bitmap_layer_get_layer(bitmap_layer));
 
@@ -112,6 +110,18 @@ static void go_now(unsigned int now) {
 
   going_since = now;
   vibes_double_pulse();
+
+  if (strlen(current_msg) < 6)
+    {
+      text_layer_set_font(text_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
+    }
+  else
+    {
+      text_layer_set_font(text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
+    }
+  
+  text_layer_set_text_alignment(text_layer, GTextAlignmentCenter);
+
   text_layer_set_text(text_layer,current_msg);
 }
 
