@@ -19,6 +19,7 @@ static void draw_clock(struct Layer *layer, GContext *ctx);
 static GBitmap *watchface;
 
 static unsigned int inverted = false;
+static const char mmsg[] = "God morgon!";
 static const char fmsg[] = "Dags!";
 static const char smsg[] = "Gå in!";
 static const char tmsg[] = "Test!";
@@ -30,16 +31,16 @@ struct reminder {
 };
 
 static struct reminder reminders[] = {
+  {6*60+30, 255, mmsg},
   {9*60+30, 255, fmsg},
   {12*60+8, 255, fmsg},
   {14*60+30, 255, fmsg},
   {15*60, 190, smsg},
   {17*60, 255, fmsg},
-  {18*60, 255, tmsg},
+  {18*60, 0, tmsg},
   {19*60+30, 255, fmsg},
 };
 
-	
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   inverted = !inverted;
